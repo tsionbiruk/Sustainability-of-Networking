@@ -1,0 +1,35 @@
+Hour,Lambda (1/ACTI)
+0,0.024747967202598208
+Model,Trade-off Score
+Base Model,0.9752520327974018
+Compressed Model,0.92402731296228
+Adaptive Strategy,0.949150022334886
+
+Hour,Lambda (1/ACTI)
+23,0.023672282243305896
+Model,Trade-off Score
+Base Model,0.9763277177566941
+Compressed Model,0.928789220511778
+Adaptive Strategy,0.9514523732934758
+
+Hour,Lambda (1/ACTI)
+23,0.024654801878399458
+Model,Trade-off Score
+Base Model,0.9753451981216006
+Compressed Model,0.925998005139515
+Adaptive Strategy,0.9496818851658231
+
+Hour,Lambda (1/ACTI)
+23,0.0245712079288748
+Model,Trade-off Score
+Base Model,0.9754287920711252
+Compressed Model,0.926482092571325
+Adaptive Strategy,0.9512581420622157
+
+Hour,Lambda (1/ACTI)
+23,0.024803314840624757
+Model,Trade-off Score
+Base Model,0.9751966851593752
+Compressed Model,0.9257757922150212
+Adaptive Strategy,0.9504327759488452
+
