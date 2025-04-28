@@ -1,0 +1,148 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.impute import SimpleImputer
+import numpy as np
+import os
+import pandas as pd
+from sklearn.metrics import r2_score
+
+
+# Load Ames Housing dataset from OpenML
+from sklearn.datasets import fetch_openml
+ames = fetch_openml(name="house_prices", as_frame=True)
+
+# Extract features and target
+X = ames.data
+y = ames.target.astype(np.float32).values.reshape(-1, 1)
+
+# One-hot encode categorical features
+X_encoded = pd.get_dummies(X, drop_first=True)
+
+# Impute missing values (after encoding)
+X_imputed = SimpleImputer(strategy='mean').fit_transform(X_encoded)
+
+# Scale features and target
+scaler_X = StandardScaler()
+X_scaled = scaler_X.fit_transform(X_imputed)
+
+scaler_y = StandardScaler()
+y_scaled = scaler_y.fit_transform(y)
+
+print(f"Final feature count after encoding: {X_scaled.shape[1]}")
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_scaled, test_size=0.2, random_state=42)
+
+# Convert to PyTorch tensors
+X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+y_test_tensor = torch.tensor(y_test, dtype=torch.float32)
+
+# DataLoaders
+train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=64)
+
+print("Ames Housing data loading complete.")
+
+class MLPRegressor(nn.Module):
+    def __init__(self, input_size):
+        super(MLPRegressor, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64), 
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
+# Create model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = MLPRegressor(input_size=X_scaled.shape[1]).to(device)
+
+
+# Loss and optimizer (with optional weight decay)
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+
+
+print("Initiating training (Deeper model on Ames dataset)")
+n_epochs = 50  
+
+best_mae = float("inf")
+patience = 5  
+epochs_no_improve = 0
+early_stop = False
+ 
+for epoch in range(n_epochs):
+    model.train()
+    running_loss = 0.0
+    preds = []
+    actuals = []
+
+    for inputs, targets in train_loader:
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        preds.append(outputs.detach().cpu().numpy())
+        actuals.append(targets.detach().cpu().numpy())
+
+    preds = np.vstack(preds)
+    actuals = np.vstack(actuals)
+    
+    preds_orig = scaler_y.inverse_transform(preds)
+    actuals_orig = scaler_y.inverse_transform(actuals)
+
+    mae = mean_absolute_error(actuals_orig, preds_orig)
+    rmse = mean_squared_error(actuals_orig, preds_orig)
+    r2 = max(0, r2_score(actuals_orig, preds_orig))  # Clamp negative R² to 0
+
+    if mae < best_mae:
+        best_mae = mae
+        epochs_no_improve = 0
+        
+    else:
+        epochs_no_improve += 1
+        print(f"Validation MAE did not improve for {epochs_no_improve} epoch(s)")
+
+    if epochs_no_improve >= patience:
+        print("Early stopping triggered.")
+        early_stop = True
+        break
+
+
+    print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {running_loss/len(train_loader):.4f}, "
+          f"MAE: {mae:.4f}, RMSE: {rmse:.4f}, R²: {r2 * 100:.2f}%")
+
+
+
+os.makedirs("models_AME", exist_ok=True)
+torch.save(model.state_dict(), "models_AME/base_mlp_reduced.pth")
+torch.save(scaler_X, "models_AME/scaler_X_reduced.pth")
+torch.save(scaler_y, "models_AME/scaler_y_reduced.pth")
+
+print("Base MLP model and scalers saved!")
+
