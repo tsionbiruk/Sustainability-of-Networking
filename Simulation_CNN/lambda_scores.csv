@@ -1,0 +1,14 @@
+Hour,Lambda
+23,0.008427420572415807
+Model,Trade-off Score
+Base Model,0.9915725794275841
+Compressed Model,0.8974854340072967
+Adaptive Strategy,0.9503134558275664
+
+Hour,Lambda
+23,0.007048143432131381
+Model,Trade-off Score
+Base Model,0.9929518565678687
+Compressed Model,0.8970604305928953
+Adaptive Strategy,0.9490125897556807
+
